@@ -1,13 +1,118 @@
-import React, { useState } from 'react';
-import { View, Image, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Image,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
+
 import wheelImg from '../assets/wheel3.png';
 import frameImg from '../assets/fortuna.png';
+
 import QuizOfMithras from './components/QuizOfMithras';
 import StarrySkyMystery from './components/StarrySkyMystery';
-import useInactivityTimer from './useInactivityTimer';
-import TwinklingStar from './components/TwinklingStar';
 import FortuneWheel from './components/FortuneWheel';
+import TwinklingStar from './components/TwinklingStar';
+import useInactivityTimer from './useInactivityTimer';
 
+export default function App() {
+  const [currentGame, setCurrentGame] = useState<'quiz' | 'stars' | 'fortune' | null>(null);
+  const [showWarning, setShowWarning] = useState(false);
+
+  // Lock to landscape on mount
+  useEffect(() => {
+    ScreenOrientation.lockAsync(
+      ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT
+    );
+  }, []);
+
+  // Get full-screen dimensions
+  const { width, height } = useWindowDimensions();
+
+  // Choose the smaller axis to base our wheel/frame size on,
+  // then scale up for a big, tablet-filling UI.
+  const baseSize = Math.min(width, height);
+  const frameSize = baseSize * 0.9;       // 90% of the short side
+  const wheelSize = frameSize * 0.8;      // 80% of the frame
+
+  const touchHandlers = useInactivityTimer(
+    () => setShowWarning(true),            // onWarn
+    () => {
+      setShowWarning(false);
+      setCurrentGame(null);
+    }
+  );
+
+  // Game screens
+  if (currentGame === 'quiz') {
+    return <QuizOfMithras onBack={() => setCurrentGame(null)} />;
+  }
+  if (currentGame === 'stars') {
+    return <StarrySkyMystery onBack={() => setCurrentGame(null)} />;
+  }
+  if (currentGame === 'fortune') {
+    return <FortuneWheel onBack={() => setCurrentGame(null)} />;
+  }
+
+  return (
+    <View
+      style={[styles.container, { width, height }]}
+      {...touchHandlers}
+    >
+      {showWarning && (
+        <Text style={styles.warningText}>
+          You’ve been idle too long — returning to menu…
+        </Text>
+      )}
+
+      {/* Frame & Wheel scaled to tablet landscape */}
+      <Image
+        source={frameImg}
+        style={[
+          styles.frame,
+          { width: frameSize, height: frameSize },
+        ]}
+      />
+      <Image
+        source={wheelImg}
+        style={[
+          styles.wheel,
+          { width: wheelSize, height: wheelSize },
+        ]}
+      />
+
+      {/* Menu Buttons */}
+      <View style={styles.buttonsContainer}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => setCurrentGame('quiz')}
+        >
+          <Text style={styles.buttonText}>Quiz of Mithras</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => setCurrentGame('stars')}
+        >
+          <Text style={styles.buttonText}>Starry Sky Mystery</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => setCurrentGame('fortune')}
+        >
+          <Text style={styles.buttonText}>Fortune Wheel</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Twinkling Stars in the background */}
+      <TwinklingStar />
+      <TwinklingStar />
+      <TwinklingStar />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -18,22 +123,26 @@ const styles = StyleSheet.create({
   },
   frame: {
     position: 'absolute',
-    width: 300,
-    height: 300,
   },
   wheel: {
-    width: 250,
-    height: 250,
     marginBottom: 20,
   },
+  buttonsContainer: {
+    position: 'absolute',
+    bottom: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '80%',
+  },
   button: {
+    flex: 1,
     backgroundColor: '#fff4dc',
     borderColor: '#c3a574',
     borderWidth: 2,
     borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    marginVertical: 8,
+    paddingVertical: 12,
+    marginHorizontal: 8,
+    alignItems: 'center',
     zIndex: 10,
   },
   buttonText: {
@@ -43,76 +152,8 @@ const styles = StyleSheet.create({
   },
   warningText: {
     position: 'absolute',
-    bottom: 40,
+    top: 20,
     fontSize: 16,
     color: '#a00',
   },
 });
-
-export default function App() {
-  const [currentGame, setCurrentGame] = useState<'quiz' | 'stars' | 'fortune' | null>(null);
-  const [showWarning, setShowWarning] = useState(false);
-
-  const touchHandlers = useInactivityTimer(
-    () => setShowWarning(true),               // onWarn
-    () => {
-      setShowWarning(false);
-      // e.g. navigate back to menu, reset game, etc.
-    }
-  );
-
-
-  if (currentGame === 'quiz') {
-    return (
-      <QuizOfMithras onBack={() => setCurrentGame(null)} />
-    );
-  }
-
-  if (currentGame === 'stars') {
-    return (
-      <StarrySkyMystery onBack={() => setCurrentGame(null)} />
-    );
-  }
-
-  if (currentGame === 'fortune') {
-        return <FortuneWheel onBack={() => setCurrentGame(null)} />;
-  }
-
-  return (
-<View style={styles.container} {...touchHandlers}>
-      {showWarning && (
-        <Text style={styles.warningText}>
-          You’ve been idle too long — returning to menu…
-        </Text>
-      )}      <Image source={frameImg} style={styles.frame} />
-      <Image source={wheelImg} style={styles.wheel} />
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setCurrentGame('quiz')}
-      >
-        <Text style={styles.buttonText}>Quiz of Mithras</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setCurrentGame('stars')}
-      >
-        <Text style={styles.buttonText}>Starry Sky Mystery</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setCurrentGame('fortune')}
-      >
-        <Text style={styles.buttonText}>Fortune Wheel</Text>
-      </TouchableOpacity>
-      {showWarning && (
-        <Text style={styles.warningText}>
-          You’ve been idle too long. Returning to menu…
-        </Text>
-      )}
-      <TwinklingStar />
-      <TwinklingStar />
-      <TwinklingStar />
-      {/* add as many as you like */}
-    </View>
-  );
-}
